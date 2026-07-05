@@ -87,7 +87,7 @@ export const LoginComponent: React.FC = () => {
         )}
 
         {/* Forms */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
           
           {/* Name Field (Register Only) */}
           {!isLogin && (
@@ -122,7 +122,8 @@ export const LoginComponent: React.FC = () => {
             <div style={{ position: 'relative' }}>
               <Mail size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
               <input
-                type="email"
+                type="text"
+                autoComplete="email"
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -139,6 +140,11 @@ export const LoginComponent: React.FC = () => {
                 }}
               />
             </div>
+            {!isLogin && (
+              <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '5px', paddingLeft: '2px' }}>
+                💡 Use <span style={{ color: '#a29bfe', fontWeight: 'bold' }}>@safeconnect.gov</span> email to register as an Authority/Dispatcher.
+              </p>
+            )}
           </div>
 
           {/* Phone Field (Register Only) */}
