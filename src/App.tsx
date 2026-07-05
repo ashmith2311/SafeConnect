@@ -8,7 +8,8 @@ import { ContactSettings } from './components/ContactSettings';
 import { DashboardQueue } from './components/DashboardQueue';
 import { HeatMap } from './components/HeatMap';
 import { DisasterBroadcast } from './components/DisasterBroadcast';
-import { Shield, Eye, ShieldAlert, AlertOctagon, Settings, MessageSquare, BarChart3, Megaphone, Terminal, AlertCircle } from 'lucide-react';
+import { LoginComponent } from './components/LoginComponent';
+import { Shield, Eye, ShieldAlert, AlertOctagon, Settings, MessageSquare, BarChart3, Megaphone, Terminal, AlertCircle, LogOut } from 'lucide-react';
 import './App.css';
 
 const MainLayout: React.FC = () => {
@@ -18,7 +19,10 @@ const MainLayout: React.FC = () => {
     activeCitizenTab,
     setActiveCitizenTab,
     disasterAlerts,
-    dismissDisaster
+    dismissDisaster,
+    isAuthenticated,
+    currentUser,
+    logoutUser
   } = useEmergency();
 
   // Find active, critical alerts that are undismissed
@@ -56,6 +60,33 @@ const MainLayout: React.FC = () => {
             <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase', display: 'block' }}>Tactical Response Hub</span>
           </div>
         </div>
+
+        {/* Auth status indicator / Logout button */}
+        {role === 'citizen' && isAuthenticated && currentUser && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{currentUser.name}</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{currentUser.email}</span>
+            </div>
+            <button 
+              onClick={logoutUser}
+              title="Logout"
+              className="flex-center"
+              style={{
+                background: 'rgba(255, 71, 87, 0.1)',
+                border: '1px solid rgba(255, 71, 87, 0.2)',
+                borderRadius: '6px',
+                width: '28px',
+                height: '28px',
+                color: 'var(--color-emergency)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Global Role Toggle */}
         <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '4px', borderRadius: '30px', border: '1px solid var(--border-color)' }}>
@@ -151,7 +182,10 @@ const MainLayout: React.FC = () => {
         
         {/* CITIZEN PORTAL */}
         {role === 'citizen' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '7fr 6fr', gap: '20px', flex: 1 }}>
+          !isAuthenticated ? (
+            <LoginComponent />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '7fr 6fr', gap: '20px', flex: 1 }}>
             
             {/* Map occupies the left column */}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -259,9 +293,9 @@ const MainLayout: React.FC = () => {
                 {activeCitizenTab === 'settings' && <ContactSettings />}
               </div>
             </div>
-
           </div>
-        )}
+        )
+      )}
 
         {/* AUTHORITIES COMMAND DECK */}
         {role === 'authority' && (

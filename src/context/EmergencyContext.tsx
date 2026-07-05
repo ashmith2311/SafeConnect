@@ -75,12 +75,30 @@ export interface EmergencyService {
   status: 'active' | 'busy';
 }
 
+export interface UserSession {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
 interface EmergencyContextType {
   role: 'citizen' | 'authority';
   setRole: (role: 'citizen' | 'authority') => void;
   activeCitizenTab: string;
   setActiveCitizenTab: (tab: string) => void;
   
+  // Auth State
+  isAuthenticated: boolean;
+  token: string | null;
+  currentUser: UserSession | null;
+  registerError: string | null;
+  loginError: string | null;
+  registerUser: (name: string, email: string, password: UserSession['phone'], phone: string) => Promise<boolean>;
+  loginUser: (email: string, password: UserSession['phone']) => Promise<boolean>;
+  logoutUser: () => void;
+  clearAuthErrors: () => void;
+
   // SOS State
   activeSos: {
     id: string;
@@ -135,7 +153,8 @@ interface EmergencyContextType {
 
 const EmergencyContext = createContext<EmergencyContextType | undefined>(undefined);
 
-// Initial Services list
+const API_BASE_URL = 'http://localhost:8080/api/v1';
+
 const defaultServices: EmergencyService[] = [
   { id: 's1', name: 'Downtown Police Precinct', type: 'police', location: { x: 500, y: 300 }, phone: '911 (Ext. 101)', status: 'active' },
   { id: 's2', name: 'Metro General Hospital', type: 'hospital', location: { x: 200, y: 150 }, phone: '911 (Ext. 102)', status: 'active' },
@@ -147,8 +166,15 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [role, setRole] = useState<'citizen' | 'authority'>('citizen');
   const [activeCitizenTab, setActiveCitizenTab] = useState<string>('sos');
   const [activeSos, setActiveSos] = useState<EmergencyContextType['activeSos']>(null);
+
+  // Authentication State
+  const [token, setToken] = useState<string | null>(localStorage.getItem('sc_token'));
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
-  // Initial Mock Incidents
+  // Incidents
   const [incidents, setIncidents] = useState<Incident[]>([
     {
       id: 'inc-1',
@@ -191,11 +217,8 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   ]);
 
-  const [contacts, setContacts] = useState<Contact[]>([
-    { id: 'c-1', name: 'Sarah Jenkins (Spouse)', relation: 'Spouse', phone: '+1 (555) 019-2834', email: 'sarah.j@example.com' },
-    { id: 'c-2', name: 'Robert Chen (Father)', relation: 'Father', phone: '+1 (555) 014-9988', email: 'r.chen@example.com' }
-  ]);
-
+  // Initial local contacts fallback, overridden by MySQL database fetch if logged in
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [contactLogs, setContactLogs] = useState<ContactLog[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: 'chat-1', sender: 'ai', text: 'Hello! I am your AI Emergency Assistant. I can guide you through first aid, fire safety, or help report incidents. Click a template or write/speak to start.', timestamp: new Date().toLocaleTimeString() }
@@ -209,6 +232,130 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   const responderInterval = useRef<any>(null);
+
+  // Check token on launch to load user session & database contacts
+  useEffect(() => {
+    if (token) {
+      // Decode JWT token loosely to restore basic email details
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const email = payload.sub;
+        
+        // Restore user details stored in localStorage
+        const storedUser = localStorage.getItem('sc_user');
+        if (storedUser) {
+          setCurrentUser(JSON.parse(storedUser));
+          setIsAuthenticated(true);
+        } else {
+          // Fallback user details
+          const fallbackUser = { id: 1, name: 'SafeConnect User', email: email, phone: 'N/A' };
+          setCurrentUser(fallbackUser);
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        logoutUser();
+      }
+    }
+  }, [token]);
+
+  // Fetch contacts from MySQL database whenever authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      fetchDbContacts();
+    } else {
+      setContacts([]);
+    }
+  }, [isAuthenticated, token]);
+
+  const fetchDbContacts = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/contacts`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // Map database response to Contact interface
+        const mappedContacts = data.map((c: any) => ({
+          id: String(c.id),
+          name: c.name,
+          phone: c.phone,
+          relation: 'Emergency',
+          email: 'N/A'
+        }));
+        setContacts(mappedContacts);
+      }
+    } catch (e) {
+      console.error('Failed to load database contacts:', e);
+    }
+  };
+
+  const registerUser = async (name: string, email: string, password: UserSession['phone'], phone: string): Promise<boolean> => {
+    setRegisterError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, phone })
+      });
+      
+      if (response.ok) {
+        return true;
+      } else {
+        const errMsg = await response.text();
+        setRegisterError(errMsg || 'Registration failed. Check connection or email.');
+        return false;
+      }
+    } catch (e) {
+      setRegisterError('Cannot connect to the backend server.');
+      return false;
+    }
+  };
+
+  const loginUser = async (email: string, password: UserSession['phone']): Promise<boolean> => {
+    setLoginError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (response.ok) {
+        const data = await response.json(); // returns AuthResponse
+        localStorage.setItem('sc_token', data.token);
+        const userObj: UserSession = { id: data.id, name: data.name, email: data.email, phone: data.phone };
+        localStorage.setItem('sc_user', JSON.stringify(userObj));
+        
+        setToken(data.token);
+        setCurrentUser(userObj);
+        setIsAuthenticated(true);
+        return true;
+      } else {
+        const errMsg = await response.text();
+        setLoginError(errMsg || 'Invalid email or password.');
+        return false;
+      }
+    } catch (e) {
+      setLoginError('Cannot connect to the backend server.');
+      return false;
+    }
+  };
+
+  const logoutUser = () => {
+    localStorage.removeItem('sc_token');
+    localStorage.removeItem('sc_user');
+    setToken(null);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
+  const clearAuthErrors = () => {
+    setRegisterError(null);
+    setLoginError(null);
+  };
 
   // Track responders live movement simulation
   useEffect(() => {
@@ -226,8 +373,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               const distance = Math.sqrt(dx * dx + dy * dy);
               
               if (distance <= resp.speed) {
-                // Arrived at target
-                // Also update incident/SOS status if matching
                 setTimeout(() => {
                   setIncidents(prevIncidents => 
                     prevIncidents.map(inc => inc.id === resp.incidentId ? {
@@ -247,7 +392,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                   status: 'arrived' as const
                 };
               } else {
-                // Move towards target
                 const ratio = resp.speed / distance;
                 return {
                   ...resp,
@@ -268,20 +412,16 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }, 1000);
       }
     }
-    return () => {
-      // Don't clear in cleanup unless component unmounts
-    };
   }, [responders, activeSos]);
 
-  // Clean up interval on unmount
   useEffect(() => {
     return () => {
       if (responderInterval.current) clearInterval(responderInterval.current);
     };
   }, []);
 
-  // Trigger SOS alert
-  const triggerSos = () => {
+  // Trigger SOS alert (POSTs to backend MySQL and triggers notifications)
+  const triggerSos = async () => {
     const newSosId = `sos-${Date.now()}`;
     const newSos: EmergencyContextType['activeSos'] = {
       id: newSosId,
@@ -289,18 +429,37 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       timestamp: new Date().toISOString(),
       status: 'pending'
     };
+
+    // 1. Persist coordinates to Java REST API backend if authenticated
+    if (isAuthenticated && token) {
+      try {
+        await fetch(`${API_BASE_URL}/alerts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            latitude: Number(userLocation.x),
+            longitude: Number(userLocation.y)
+          })
+        });
+      } catch (e) {
+        console.error('Failed to log SOS alert to MySQL backend database:', e);
+      }
+    }
     
-    // Add to incidents queue so dispatchers see it instantly
+    // 2. Add to local interactive UI state
     const newIncident: Incident = {
       id: newSosId,
-      type: 'medical', // default to medical for general SOS
-      description: 'ONE-TAP SOS ALERT ACTIVATED! Live GPS Tracking Active. Immediate assistance required.',
+      type: 'medical',
+      description: 'ONE-TAP SOS ALERT ACTIVATED! Real-time GPS Tracking Logged in MySQL Database. Immediate assistance required.',
       location: userLocation,
       isAnonymous: false,
-      reporterName: 'Emergency User',
+      reporterName: currentUser?.name || 'Emergency User',
       status: 'pending',
       timestamp: newSos.timestamp,
-      updates: [{ status: 'pending', note: 'SOS alert broadcasted to all services', time: new Date().toLocaleTimeString() }]
+      updates: [{ status: 'pending', note: 'SOS alert registered in database and broadcasted', time: new Date().toLocaleTimeString() }]
     };
 
     setActiveSos(newSos);
@@ -310,7 +469,7 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const logs: ContactLog[] = [];
     contacts.forEach((contact) => {
       const smsMsg = `ALERT: ${contact.name}, your contact has triggered a SafeConnect SOS! Live location: ${userLocation.address}. Dispatchers are responding.`;
-      const emailMsg = `Dear ${contact.name},\n\nThis is an automated emergency alert from SafeConnect.\n\nYour contact has activated their One-Tap SOS emergency alert at ${new Date().toLocaleTimeString()}.\n\nLocation Details: ${userLocation.address}\nGPS SVG Coordinates: (${userLocation.x.toFixed(0)}, ${userLocation.y.toFixed(0)})\n\nEmergency dispatchers have been notified.`;
+      const emailMsg = `Dear ${contact.name},\n\nThis is an automated emergency alert from SafeConnect.\n\nYour contact has activated their One-Tap SOS emergency alert at ${new Date().toLocaleTimeString()}.\n\nLocation Details: ${userLocation.address}\nGPS Coordinates: (${userLocation.x}, ${userLocation.y})\n\nEmergency dispatchers have been notified.`;
       
       logs.push({
         id: `log-${Date.now()}-sms-${contact.id}`,
@@ -332,12 +491,11 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     setContactLogs(logs);
 
-    // Simulate SMS/Email delivery network lag
     setTimeout(() => {
       setContactLogs(prevLogs => 
         prevLogs.map(log => ({
           ...log,
-          status: Math.random() > 0.05 ? 'sent' : 'failed' // 95% success rate simulation
+          status: Math.random() > 0.05 ? 'sent' : 'failed'
         }))
       );
     }, 2000);
@@ -345,7 +503,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const cancelSos = () => {
     if (activeSos) {
-      // Resolve the incident log
       setIncidents((prev) => 
         prev.map(inc => inc.id === activeSos.id ? {
           ...inc,
@@ -353,8 +510,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           updates: [...inc.updates, { status: 'resolved', note: 'SOS canceled by User.', time: new Date().toLocaleTimeString() }]
         } : inc)
       );
-      
-      // Update responder list for this incident
       setResponders(prev => prev.filter(r => r.incidentId !== activeSos.id));
       setActiveSos(null);
     }
@@ -374,7 +529,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  // Report an Incident
   const reportIncident = (
     type: Incident['type'],
     description: string,
@@ -385,9 +539,8 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     mediaType?: 'image' | 'video',
     voiceTranscription?: string
   ) => {
-    // Generate incident coordinate randomly offset near user location
     const offsetAngle = Math.random() * Math.PI * 2;
-    const offsetDist = Math.random() * 80 + 30; // offset slightly
+    const offsetDist = Math.random() * 80 + 30;
     const newX = Math.min(Math.max(userLocation.x + Math.cos(offsetAngle) * offsetDist, 50), 950);
     const newY = Math.min(Math.max(userLocation.y + Math.sin(offsetAngle) * offsetDist, 50), 550);
 
@@ -401,7 +554,7 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         address: address || `Sector ${Math.floor(newX / 250) + 1}, City Grid`
       },
       isAnonymous,
-      reporterName: isAnonymous ? undefined : (reporterName || 'Citizen User'),
+      reporterName: isAnonymous ? undefined : (reporterName || currentUser?.name || 'Citizen User'),
       status: 'pending',
       mediaUrl,
       mediaType,
@@ -413,7 +566,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setIncidents(prev => [newIncident, ...prev]);
   };
 
-  // Update status of incident
   const updateIncidentStatus = (id: string, status: Incident['status'], note: string) => {
     setIncidents(prev => 
       prev.map(inc => {
@@ -433,7 +585,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
-  // Dispatch responder unit
   const dispatchResponder = (
     incidentId: string,
     type: Responder['type'],
@@ -449,14 +600,13 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       location: { x: startX, y: startY },
       targetLocation: { x: targetX, y: targetY },
       status: 'moving',
-      speed: 25 // movement step size (approx 15 seconds to travel 350+px)
+      speed: 25
     };
 
     setResponders((prev) => [...prev, newResponder]);
     updateIncidentStatus(incidentId, 'accepted', `Emergency ${type} unit dispatched from station.`);
   };
 
-  // Broadcast disaster warning from authority dashboard
   const broadcastDisaster = (title: string, message: string, severity: 'critical' | 'warning', type: DisasterAlert['type']) => {
     const newAlert: DisasterAlert = {
       id: `dis-${Date.now()}`,
@@ -476,16 +626,40 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     );
   };
 
-  // Contacts
-  const addContact = (contact: Omit<Contact, 'id'>) => {
-    const newContact = {
-      ...contact,
-      id: `c-${Date.now()}`
-    };
-    setContacts(prev => [...prev, newContact]);
+  // Add contact to MySQL database
+  const addContact = async (contact: Omit<Contact, 'id'>) => {
+    if (isAuthenticated && token) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/contacts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: contact.name,
+            phone: contact.phone
+          })
+        });
+
+        if (response.ok) {
+          fetchDbContacts(); // Refresh contact list from database
+        }
+      } catch (e) {
+        console.error('Failed to save contact to database:', e);
+      }
+    } else {
+      // Fallback local-only state addition
+      const newContact = {
+        ...contact,
+        id: `c-${Date.now()}`
+      };
+      setContacts(prev => [...prev, newContact]);
+    }
   };
 
   const deleteContact = (id: string) => {
+    // Local state removal
     setContacts(prev => prev.filter(c => c.id !== id));
   };
 
@@ -493,7 +667,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setContactLogs([]);
   };
 
-  // AI Chatbot Logic with rich guides
   const sendChatMessage = (text: string) => {
     if (!text.trim()) return;
 
@@ -506,7 +679,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     setChatMessages((prev) => [...prev, userMsg]);
 
-    // Simulated AI response based on query keywords
     setTimeout(() => {
       const cleanText = text.toLowerCase();
       let aiText = '';
@@ -525,7 +697,6 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         aiText = 'I can assist you in preparing a crime report. Here are the essential pieces of information authorities will require:';
         cardType = 'crime_report';
       } else {
-        // generic response
         aiText = "I'm processing your request. If this is a life-threatening situation, please trigger the SOS button immediately. If you need step-by-step help, you can ask about: 'First Aid steps', 'Fire safety instructions', 'Cardiac Arrest help', or how to 'Report a crime'. How can I help you right now?";
       }
 
@@ -594,6 +765,15 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setRole,
         activeCitizenTab,
         setActiveCitizenTab,
+        isAuthenticated,
+        token,
+        currentUser,
+        registerError,
+        loginError,
+        registerUser,
+        loginUser,
+        logoutUser,
+        clearAuthErrors,
         activeSos,
         triggerSos,
         cancelSos,
