@@ -9,13 +9,12 @@ import { DashboardQueue } from './components/DashboardQueue';
 import { HeatMap } from './components/HeatMap';
 import { DisasterBroadcast } from './components/DisasterBroadcast';
 import { LoginComponent } from './components/LoginComponent';
-import { Shield, Eye, ShieldAlert, AlertOctagon, Settings, MessageSquare, BarChart3, Megaphone, Terminal, AlertCircle, LogOut } from 'lucide-react';
+import { Shield, ShieldAlert, AlertOctagon, Settings, MessageSquare, BarChart3, Megaphone, AlertCircle, LogOut } from 'lucide-react';
 import './App.css';
 
 const MainLayout: React.FC = () => {
   const {
     role,
-    setRole,
     activeCitizenTab,
     setActiveCitizenTab,
     disasterAlerts,
@@ -62,11 +61,13 @@ const MainLayout: React.FC = () => {
         </div>
 
         {/* Auth status indicator / Logout button */}
-        {role === 'citizen' && isAuthenticated && currentUser && (
+        {isAuthenticated && currentUser && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.03)', padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'white' }}>{currentUser.name}</span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{currentUser.email}</span>
+              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
+                {currentUser.role === 'ROLE_AUTHORITY' ? 'AUTHORITY / ADMIN' : 'CITIZEN'}
+              </span>
             </div>
             <button 
               onClick={logoutUser}
@@ -87,48 +88,6 @@ const MainLayout: React.FC = () => {
             </button>
           </div>
         )}
-
-        {/* Global Role Toggle */}
-        <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '4px', borderRadius: '30px', border: '1px solid var(--border-color)' }}>
-          <button
-            onClick={() => setRole('citizen')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '25px',
-              border: 'none',
-              background: role === 'citizen' ? 'linear-gradient(135deg, var(--color-info), #0056b3)' : 'transparent',
-              color: role === 'citizen' ? 'white' : 'var(--text-secondary)',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.3s'
-            }}
-          >
-            <Eye size={14} /> CITIZEN HUB
-          </button>
-          <button
-            onClick={() => setRole('authority')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: '25px',
-              border: 'none',
-              background: role === 'authority' ? 'linear-gradient(135deg, var(--color-emergency), #b32d3a)' : 'transparent',
-              color: role === 'authority' ? 'white' : 'var(--text-secondary)',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              transition: 'all 0.3s'
-            }}
-          >
-            <Terminal size={14} /> AUTHORITIES CMD
-          </button>
-        </div>
       </header>
 
       {/* 2. Disaster Warning Marquee Overlay (Citizen side only) */}

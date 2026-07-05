@@ -35,6 +35,13 @@ public class UserService {
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword())); // BCrypt Hash!
 
+        // Assign role automatically based on email domain
+        if (request.getEmail().toLowerCase().endsWith("@safeconnect.gov")) {
+            user.setRole("ROLE_AUTHORITY");
+        } else {
+            user.setRole("ROLE_CITIZEN");
+        }
+
         return userRepository.save(user);
     }
 
@@ -47,7 +54,7 @@ public class UserService {
         }
 
         String token = jwtUtil.generateToken(user.getEmail());
-        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getPhone());
+        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getPhone(), user.getRole());
     }
 
     public Optional<User> findByEmail(String email) {

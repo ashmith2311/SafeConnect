@@ -80,6 +80,7 @@ export interface UserSession {
   name: string;
   email: string;
   phone: string;
+  role: string;
 }
 
 interface EmergencyContextType {
@@ -244,13 +245,20 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         // Restore user details stored in localStorage
         const storedUser = localStorage.getItem('sc_user');
         if (storedUser) {
-          setCurrentUser(JSON.parse(storedUser));
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
           setIsAuthenticated(true);
+          if (parsedUser.role === 'ROLE_AUTHORITY') {
+            setRole('authority');
+          } else {
+            setRole('citizen');
+          }
         } else {
           // Fallback user details
-          const fallbackUser = { id: 1, name: 'SafeConnect User', email: email, phone: 'N/A' };
+          const fallbackUser = { id: 1, name: 'SafeConnect User', email: email, phone: 'N/A', role: 'ROLE_CITIZEN' };
           setCurrentUser(fallbackUser);
           setIsAuthenticated(true);
+          setRole('citizen');
         }
       } catch (e) {
         logoutUser();
@@ -326,12 +334,18 @@ export const EmergencyProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (response.ok) {
         const data = await response.json(); // returns AuthResponse
         localStorage.setItem('sc_token', data.token);
-        const userObj: UserSession = { id: data.id, name: data.name, email: data.email, phone: data.phone };
+        const userObj: UserSession = { id: data.id, name: data.name, email: data.email, phone: data.phone, role: data.role };
         localStorage.setItem('sc_user', JSON.stringify(userObj));
         
         setToken(data.token);
         setCurrentUser(userObj);
         setIsAuthenticated(true);
+
+        if (data.role === 'ROLE_AUTHORITY') {
+          setRole('authority');
+        } else {
+          setRole('citizen');
+        }
         return true;
       } else {
         const errMsg = await response.text();

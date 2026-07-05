@@ -22,16 +22,20 @@ public class User {
     @Column(nullable = false)
     private String phone;
 
+    @Column(nullable = false)
+    private String role;
+
     // Constructors
     public User() {
     }
 
-    public User(Long id, String name, String email, String password, String phone) {
+    public User(Long id, String name, String email, String password, String phone, String role) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.password = password;
         this.phone = phone;
+        this.role = role;
     }
 
     // Getters and Setters
@@ -73,5 +77,13 @@ public class User {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }
