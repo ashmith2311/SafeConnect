@@ -170,11 +170,18 @@ public class EmergencyReportService {
             if (twilioSid == null || twilioSid.isEmpty()) return;
             Twilio.init(twilioSid, twilioToken);
             
+            String mapsLink = "";
+            if (report.getLatitude() != null && report.getLongitude() != null) {
+                mapsLink = String.format("\nLive GPS Location: https://maps.google.com/?q=%f,%f", 
+                    report.getLatitude(), report.getLongitude());
+            }
+
             String message = String.format(
-                "🚨 URGENT: %s emergency reported at %s. Priority: %s. Please respond immediately.",
+                "🚨 URGENT: %s emergency reported at %s. Priority: %s.%s Please respond immediately.",
                 report.getCategory(),
-                report.getLocationAddress(),
-                report.getPriority()
+                report.getLocationAddress() != null ? report.getLocationAddress() : "Coordinates X: " + report.getLatitude() + ", Y: " + report.getLongitude(),
+                report.getPriority(),
+                mapsLink
             );
             
             // Send to emergency contacts
@@ -193,14 +200,21 @@ public class EmergencyReportService {
 
     private void sendSOSMessage(EmergencyContact contact, EmergencyReport report, User user) {
         try {
+            String mapsLink = "";
+            if (report.getLatitude() != null && report.getLongitude() != null) {
+                mapsLink = String.format("\nLive GPS Location: https://maps.google.com/?q=%f,%f", 
+                    report.getLatitude(), report.getLongitude());
+            }
+
             String message = String.format(
                 "🚨 SOS ALERT from %s!\n\n" +
                 "Location: %s\n" +
-                "Message: %s\n" +
+                "Message: %s%s\n\n" +
                 "Please contact immediately.",
                 user.getFullName(),
-                report.getLocationAddress(),
-                report.getDescription()
+                report.getLocationAddress() != null ? report.getLocationAddress() : "Coordinates X: " + report.getLatitude() + ", Y: " + report.getLongitude(),
+                report.getDescription() != null ? report.getDescription() : "SOS Emergency Signal Active!",
+                mapsLink
             );
             
             // Send SMS
