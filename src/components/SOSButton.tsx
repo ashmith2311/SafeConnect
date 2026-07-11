@@ -27,6 +27,9 @@ export const SOSButton: React.FC = () => {
             countdownInterval.current = null;
             setIsCountingDown(false);
             triggerSos();
+            // Auto dial the first contact, fallback to 112
+            const targetPhone = contacts[0] ? contacts[0].phone : "112";
+            window.location.href = `tel:${targetPhone}`;
             return 3;
           }
           return prev - 1;
@@ -186,6 +189,53 @@ export const SOSButton: React.FC = () => {
               <span className="badge badge-emergency" style={{ marginBottom: '20px' }}>
                 Status: {activeSos.status.toUpperCase()}
               </span>
+              
+              {/* Call Actions Panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '320px', margin: '0 auto 20px auto' }}>
+                {contacts.slice(0, 2).map((contact) => (
+                  <a
+                    key={contact.id}
+                    href={`tel:${contact.phone}`}
+                    className="btn-accent"
+                    style={{
+                      padding: '12px 20px',
+                      borderRadius: '30px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      textDecoration: 'none',
+                      color: 'white',
+                      fontWeight: 600,
+                      background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                      boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)'
+                    }}
+                  >
+                    <PhoneCall size={16} /> Call {contact.name} ({contact.phone})
+                  </a>
+                ))}
+                
+                <a
+                  href="tel:112"
+                  className="btn-primary"
+                  style={{
+                    padding: '12px 20px',
+                    borderRadius: '30px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    textDecoration: 'none',
+                    color: 'white',
+                    fontWeight: 600,
+                    background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
+                    boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)'
+                  }}
+                >
+                  <PhoneCall size={16} /> Call Emergency Services (112)
+                </a>
+              </div>
+
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '400px', margin: '0 auto 25px auto' }}>
                 Your live position is being monitored by authorities. Do not close this app until help arrives.
               </p>
