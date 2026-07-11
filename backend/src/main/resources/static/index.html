@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeConnect - Emergency Response System</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- AOS -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #8b5cf6;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+
+        .animated-bg .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            animation: float 20s infinite;
+        }
+
+        .animated-bg .circle:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .animated-bg .circle:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            bottom: -150px;
+            left: -150px;
+            animation-delay: -5s;
+        }
+
+        .animated-bg .circle:nth-child(3) {
+            width: 200px;
+            height: 200px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -30px) scale(1.1); }
+            50% { transform: translate(-20px, 20px) scale(0.9); }
+            75% { transform: translate(20px, 30px) scale(1.05); }
+        }
+
+        /* Glassmorphism Navigation */
+        .navbar-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .navbar-glass .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-glass .nav-link:hover {
+            color: #fff !important;
+            transform: translateY(-2px);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding: 80px 0;
+        }
+
+        .hero-title {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+        }
+
+        /* Emergency Buttons */
+        .emergency-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        .emergency-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: all 0.6s ease;
+        }
+
+        .emergency-btn:hover::before {
+            left: 100%;
+        }
+
+        .emergency-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .btn-crime { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        .btn-medical { background: linear-gradient(135deg, #22c55e, #16a34a); }
+        .btn-fire { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-accident { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+        .btn-flood { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .btn-cyclone { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+        .btn-earthquake { background: linear-gradient(135deg, #f472b6, #ec4899); }
+        .btn-women { background: linear-gradient(135deg, #ec4899, #db2777); }
+        .btn-child { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-elder { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+
+        /* Glass Cards */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.4s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+
+        /* SOS Button */
+        .sos-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 800;
+            position: relative;
+            animation: pulse 2s infinite;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.5);
+        }
+
+        .sos-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 60px rgba(239, 68, 68, 0.7);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Stats Section */
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.7));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .emergency-btn {
+                font-size: 0.9rem;
+                padding: 12px 20px;
+            }
+
+            .sos-button {
+                width: 80px;
+                height: 80px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-glass fixed-top">
+        <div class="container">
+            <a class="navbar-brand text-white fw-bold" href="#">
+                <i class="fas fa-shield-alt me-2"></i>SafeConnect
+            </a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#home">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#services">Services</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#stats">Statistics</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#tips">Emergency Tips</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#contact">Contact</a></li>
+                    <li class="nav-item">
+                        <a href="http://localhost:5173" class="btn btn-light rounded-pill px-4 ms-2">
+                            <i class="fas fa-sign-in-alt me-2"></i>Login
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6" data-aos="fade-right">
+                    <h1 class="hero-title">
+                        Your Safety<br>Our Priority
+                    </h1>
+                    <p class="hero-subtitle">
+                        Emergency response at your fingertips. Report incidents, send SOS alerts,
+                        and connect with emergency services instantly.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="http://localhost:5173" class="btn btn-light btn-lg rounded-pill px-5">
+                            <i class="fas fa-user-plus me-2"></i>Get Started
+                        </a>
+                        <a href="#services" class="btn btn-outline-light btn-lg rounded-pill px-5">
+                            <i class="fas fa-play me-2"></i>Learn More
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center" data-aos="fade-left">
+                    <div class="position-relative">
+                        <div class="sos-button mx-auto mb-4" style="display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <i class="fas fa-phone-alt me-2"></i>SOS
+                        </div>
+                        <p class="text-white-50">One Click Emergency Alert</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Emergency Services Section -->
+    <section id="services" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5" data-aos="fade-up">
+                <i class="fas fa-ambulance me-2"></i>Emergency Services
+            </h2>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="glass-card text-center">
+                        <i class="fas fa-car-crash fa-3x mb-3 text-danger"></i>
+                        <h4>Police</h4>
+                        <p>Report crimes, suspicious activities, and get immediate police assistance.</p>
+                        <button class="btn btn-crime emergency-btn w-100">Report Crime</button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="glass-card text-center">
+                        <i class="fas fa-heartbeat fa-3x mb-3 text-success"></i>
+                        <h4>Medical Emergency</h4>
+                        <p>Request ambulance, report medical emergencies, and get healthcare support.</p>
+                        <button class="btn btn-medical emergency-btn w-100">Medical Help</button>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="glass-card text-center">
+                        <i class="fas fa-fire-extinguisher fa-3x mb-3 text-warning"></i>
+                        <h4>Fire Department</h4>
+                        <p>Report fires, get firefighting assistance, and fire safety guidance.</p>
+                        <button class="btn btn-fire emergency-btn w-100">Report Fire</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Statistics Section -->
+    <section id="stats" class="py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-3" data-aos="fade-up">
+                    <div class="glass-card text-center">
+                        <div class="stat-number">1,234</div>
+                        <p>Reports Resolved</p>
+                    </div>
+                </div>
+                <div class="col-md-3" data-aos="fade-up" data-aos-delay="100">
+                    <div class="glass-card text-center">
+                        <div class="stat-number">98%</div>
+                        <p>Response Rate</p>
+                    </div>
+                </div>
+                <div class="col-md-3" data-aos="fade-up" data-aos-delay="200">
+                    <div class="glass-card text-center">
+                        <div class="stat-number">4.8</div>
+                        <p>User Rating</p>
+                    </div>
+                </div>
+                <div class="col-md-3" data-aos="fade-up" data-aos-delay="300">
+                    <div class="glass-card text-center">
+                        <div class="stat-number">5K+</div>
+                        <p>Active Users</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 mt-5">
+        <div class="container text-center text-white-50">
+            <p>&copy; 2026 SafeConnect. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+        AOS.init({
+            duration: 1000,
+            once: true
+        });
+
+        // Redirect to Login if clicked since login is managed by Vite App on 5173
+        document.querySelectorAll('.emergency-btn, .sos-button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                window.location.href = 'http://localhost:5173';
+            });
+        });
+    </script>
+</body>
+</html>
